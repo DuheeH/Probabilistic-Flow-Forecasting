@@ -1,3 +1,14 @@
+# Get Started
+To get started and build the feature set, first install the required packages using the following command in terminal
+pip install -r requirements.txt
+
+Then run download_noaa_lcd.py, rainfall_loader.py, and build_feature_store_v1.py in that order
+python src/FIELNAME.py
+
+At this point, if you open data/raw and data/processed you will see the raw downloaded files and feature set respectively.
+
+See below for documentation on methodlogy, assumptions, and next steps.
+
 # North River WRRF Feature Store
 
 This repo builds a local hourly external-forcing feature store for future North River WRRF influent-flow modeling.
