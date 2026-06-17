@@ -25,7 +25,7 @@ This document records methodology, data, and reference sources for the North Riv
 
 | Source | URL | Project Role | Status | Variables / Information Of Interest | Reason For Inclusion | Limitations | Approved For Version 1 Production Use |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| NOAA CO-OPS Station 8518750, The Battery | https://tidesandcurrents.noaa.gov/stationhome.html?id=8518750 | Primary Version 1 tide / water-level source | Selected | Observed water level, datum, units, station metadata | Best Version 1 proxy for lower Hudson / New York Harbor tidal conditions near Manhattan | Proxy only; not a plant-specific hydraulic boundary condition | Yes |
+| NOAA CO-OPS Station 8518750, The Battery | https://tidesandcurrents.noaa.gov/stationhome.html?id=8518750 | Primary Version 1 tide / water-level source | Selected; downloaded and joined in V1 | Hourly height / water level, datum `MLLW`, metric units, local station time | Best Version 1 proxy for lower Hudson / New York Harbor tidal conditions near Manhattan | Proxy only; not a plant-specific hydraulic boundary condition; 10 missing values after joining to complete V1 backbone | Yes |
 
 ## D. Optional / Future Hydrometeorological Sources
 

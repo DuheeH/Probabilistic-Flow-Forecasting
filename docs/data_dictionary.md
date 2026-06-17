@@ -21,7 +21,7 @@ Version 1 is an external-forcing feature store only. It must not include target-
 | month_cos | float32 | -1 to 1 | 1 | V1 required | Cyclical annual encoding | Use with month_sin. |
 | rain_mm | float32 | mm/hr accumulation | 1 | V1 required | Hourly rainfall accumulation | NOAA LCD fallback uses `HourlyPrecipitation` from `FM-15` rows, treated as millimeters. Do not assume NaN = 0. Trace `T` is treated as 0.0 mm and documented. |
 | rain_t | float32 | mm/hr accumulation | 1 | V1 required | Current-hour rainfall feature | Usually equal to rain_mm. Included for schema readability. |
-| water_level | float32 | source-specific | 1 | V1 required | NOAA tide / water elevation | Must standardize units and datum. Consider renaming to water_level_ft or water_level_m after source choice. |
+| water_level | float32 | meters | 1 | Built in V1 | NOAA CO-OPS hourly height from The Battery | Version 1 uses Station 8518750, hourly height, metric units, datum `MLLW`, local station time. |
 | temperature_c | float32 | °C | 3 | V1 optional | Ambient air temperature | Useful for seasonality, snowmelt, and infiltration context. Do not block V1 if unavailable. |
 | rain_t_1 | float32 | mm/hr | 1 | V1 required | Rainfall 1 hour ago | Use shift(1). Causal only. |
 | rain_t_3 | float32 | mm/hr | 2 | V1 should-have | Rainfall 3 hours ago | Captures short routing delays. |
@@ -48,13 +48,13 @@ Version 1 is an external-forcing feature store only. It must not include target-
 | tidal_phase_sin | float32 | -1 to 1 | 2 | V1 should-have | Synthetic semi-diurnal tidal phase | Use elapsed hours from fixed timestamp, not row index unless hourly backbone is validated complete. |
 | tidal_phase_cos | float32 | -1 to 1 | 2 | V1 should-have | Synthetic semi-diurnal tidal phase | Use with tidal_phase_sin. Period ≈ 12.42 hours. This does not replace observed water_level. |
 | rain_missing_flag | int8 | 0/1 | 1 | V1 required | Rainfall missingness indicator | 1 means missing or invalid rainfall. Do not silently fill missing rainfall. Trace precipitation is not treated as missing in Version 1. |
-| tide_missing_flag | int8 | 0/1 | 1 | V1 required | Tide missingness indicator | 1 means missing or imputed. |
+| tide_missing_flag | int8 | 0/1 | 1 | Built in V1 | Tide missingness indicator | 1 means missing after joining NOAA CO-OPS hourly height to the complete backbone. Missing tide is not filled. |
 | temperature_missing_flag | int8 | 0/1 | 3 | V1 optional | Temperature missingness indicator | Only needed if temperature_c is included. |
 | rain_source | string | source label | 1 | V1 required | Rainfall provenance | Version 1 fallback label: `NOAA NCEI LCD Central Park USW00094728 fallback`. NRCC / Central Park remains the preferred conceptual source. |
-| tide_source | string | source label | 1 | V1 required | Tide provenance | Example: NOAA CO-OPS 8518750 The Battery. |
-| water_level_units | string | ft / m | 1 | V1 required | Water-level units | Required to prevent unit confusion. |
-| water_level_datum | string | MLLW / NAVD88 / etc. | 1 | V1 required | Vertical datum | Required to prevent mixing incompatible water-level references. |
-| timezone_assumption | string | UTC / America/New_York / etc. | 1 | V1 required metadata | Timestamp convention note | Could be stored as metadata rather than repeated per row. NOAA LCD rainfall timestamps are treated as local Central Park station observation time bucketed to the hour. |
+| tide_source | string | source label | 1 | Built in V1 | Tide provenance | Version 1 label: `NOAA CO-OPS 8518750 The Battery`. |
+| water_level_units | string | metric | 1 | Built in V1 | Water-level units | NOAA CO-OPS request used `units=metric`. |
+| water_level_datum | string | MLLW | 1 | Built in V1 | Vertical datum | NOAA CO-OPS request used `datum=MLLW`. |
+| timezone_assumption | string | local station time | 1 | V1 metadata | Timestamp convention note | Could be stored as metadata rather than repeated per row. V1 uses a naive local hourly backbone; NOAA LCD rainfall is bucketed to local Central Park hour; NOAA CO-OPS tide is requested with `time_zone=lst_ldt`. |
 | influent_flow_mgd | float32 | MGD | Future | V2 model table only | Actual North River influent flow target | Do not build tonight unless real hourly influent flow data exists. Target variable. |
 | flow_t_1 | float32 | MGD | Future | V2 model table only | Flow 1 hour ago | Requires real influent_flow_mgd. Autoregressive feature. |
 | flow_t_3 | float32 | MGD | Future | V2 model table only | Flow 3 hours ago | Requires real influent_flow_mgd. |
@@ -73,6 +73,7 @@ Version 1 is an external-forcing feature store only. It must not include target-
 | Tidal harmonic features should be based on elapsed time, not row number, unless the hourly backbone is already verified complete. |  |  |  |  |  |  |
 | Keep Version 1 external forcing features separate from Version 2 model-target features. |  |  |  |  |  |  |
 | NOAA LCD fallback rainfall should use regular hourly `FM-15` rows only. Special `FM-16` rows should not be summed into hourly totals. |  |  |  |  |  |  |
+| NOAA CO-OPS Version 1 tide should use Station 8518750 The Battery, hourly height, metric units, datum MLLW, and local station time. |  |  |  |  |  |  |
 | The Version 1 deliverable is: |  |  |  |  |  |  |
 | north_river_feature_store_v1.parquet |  |  |  |  |  |  |
 | north_river_feature_store_v1.csv |  |  |  |  |  |  |

@@ -266,13 +266,22 @@ This outline is intended to become a slide deck for an advisor. It should explai
 
 ### Timestamp and Time Zone Assumptions
 
-- To be finalized during implementation.
-- Preferred approach:
-  - Build a complete hourly timestamp backbone first.
-  - Store timestamps consistently.
-  - Use America/New_York local time for calendar features.
-  - Document source timestamp conventions for rainfall and NOAA tide data.
-  - Track duplicated or missing local hours caused by daylight saving time transitions.
+- Version 1 does not use UTC internally.
+- The final `timestamp` column is stored as naive local time aligned to New York / source-station local time.
+- The feature store uses a complete naive hourly backbone from `2015-01-01 00:00` through `2024-12-31 23:00`.
+- The hourly backbone defines the time axis; rainfall and tide are left-joined onto it.
+- NOAA LCD rainfall observations:
+  - Use regular `FM-15` hourly observations.
+  - Usually occur near `:51`.
+  - Are bucketed down to the corresponding hour.
+  - Are treated according to the local station timestamp convention used by NOAA LCD for Central Park.
+- NOAA CO-OPS Battery tide data:
+  - Was acquired using `time_zone=lst_ldt`.
+  - Was joined to the same naive local hourly backbone.
+- Daylight-saving-time handling is a known Version 1 limitation:
+  - The backbone includes a simple sequence of naive local hourly timestamps.
+  - It does not explicitly model nonexistent spring-forward hours or repeated fall-back hours.
+- A future version may standardize fully to UTC after source timestamp conventions and target-flow timestamp conventions are confirmed.
 
 ### NRCC / CLIMOD 2 Rainfall Acquisition Checkpoint
 
@@ -396,8 +405,7 @@ This outline is intended to become a slide deck for an advisor. It should explai
   - This fallback is now approved for Version 1 Central Park hourly precipitation.
 - Current build status:
   - The NOAA LCD fallback file has been downloaded locally.
-  - The final feature store has not been built yet.
-  - It should remain blocked until tide data is acquired and the final hourly backbone join is implemented/validated.
+  - The final Version 1 feature store has been built and validated.
 
 ### NOAA LCD Download And Rainfall Validation
 
@@ -430,6 +438,49 @@ This outline is intended to become a slide deck for an advisor. It should explai
 - Limitation:
   - The rainfall input is usable for Version 1, but it is not a perfect complete hourly time axis.
   - The final feature-store build must create its own complete hourly backbone and left-join rainfall onto it, preserving missing rainfall flags.
+
+### Version 1 Feature Store Build
+
+- Build script:
+  - `src/build_feature_store_v1.py`
+- Outputs created:
+  - `data/processed/north_river_feature_store_v1.parquet`
+  - `data/processed/north_river_feature_store_v1.csv`
+- Time range:
+  - Start: `2015-01-01 00:00:00`
+  - End: `2024-12-31 23:00:00`
+  - Row count: 87,672
+  - Expected hourly rows: 87,672
+  - Duplicate timestamps: 0
+  - Missing timestamps: 0
+- Rainfall:
+  - Source: `NOAA NCEI LCD Central Park USW00094728 fallback`
+  - Raw file: `data/raw/weather/central_park_noaa_lcd_hourly_weather_2015_2024.csv`
+  - Missing rainfall values after joining to the complete backbone: 1,245
+  - Trace precipitation (`T`) is treated as `0.0 mm`.
+  - Missing rainfall is not filled with zero.
+- Tide / water level:
+  - Source: `NOAA CO-OPS 8518750 The Battery`
+  - Raw file: `data/raw/tides/battery_noaa_coops_hourly_height_2015_2024_mllw_metric_lst_ldt.csv`
+  - Product: hourly height
+  - Datum: `MLLW`
+  - Units: metric
+  - Timezone request: `lst_ldt`, aligned to local station time for Version 1
+  - Missing tide values after joining to the complete backbone: 10
+- Timestamp / timezone assumption:
+  - Version 1 uses a complete naive local hourly backbone from `2015-01-01 00:00` through `2024-12-31 23:00`.
+  - NOAA LCD rainfall observations are bucketed to the corresponding local hour.
+  - NOAA CO-OPS tide data was requested using local station time (`lst_ldt`) to align with the rainfall backbone.
+- Validation:
+  - The feature store contains no `influent_flow_mgd` column.
+  - The feature store contains no flow-lag columns.
+  - Version 1 remains external-forcing only.
+  - Diagnostic plots were not generated because `matplotlib` was not available in the active Python environment; this did not block the data build.
+- Known limitations:
+  - Central Park rainfall is a point-gauge fallback, not a sewershed-average rainfall product.
+  - The Battery is a tide proxy, not a plant-specific hydraulic boundary.
+  - No real hourly North River influent-flow data is included.
+  - The next major step is to obtain actual hourly North River influent-flow data and build `north_river_model_table_v1`.
 
 ### Guardrails
 
