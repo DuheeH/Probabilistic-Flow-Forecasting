@@ -127,3 +127,5 @@ The notebook is for local QA only. It does not train a model or assume a flow ta
 ## Next Step
 
 The next major step is to obtain actual hourly North River influent-flow data. After that, the project can build `north_river_model_table_v1` by joining real flow observations to this external-forcing feature store.
+
+For a concise Phase 1 summary, see [`docs/status_update_v1.md`](docs/status_update_v1.md).
