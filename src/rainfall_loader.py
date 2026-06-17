@@ -20,6 +20,7 @@ NRCC_CLIMOD2_RAINFALL_PATH = Path(
 NOAA_LCD_RAINFALL_PATH = Path(
     "data/raw/weather/central_park_noaa_lcd_hourly_weather_2015_2024.csv"
 )
+NOAA_LCD_SOURCE = "NOAA NCEI LCD Central Park USW00094728 fallback"
 
 TIMESTAMP_COLUMN_CANDIDATES = (
     "timestamp",
@@ -54,7 +55,7 @@ SOURCE_CONFIGS = (
     },
     {
         "path": NOAA_LCD_RAINFALL_PATH,
-        "source": "NOAA/NCEI LCD fallback: Central Park hourly weather",
+        "source": NOAA_LCD_SOURCE,
         "units": "mm",
     },
 )
@@ -125,6 +126,45 @@ def _rain_expr(rain_col: str, units: str) -> pl.Expr:
     return rain.cast(pl.Float32)
 
 
+def _load_noaa_lcd_rainfall(path: Path) -> pl.DataFrame:
+    required_columns = ["DATE", "REPORT_TYPE", "HourlyPrecipitation"]
+    df = pl.read_csv(
+        path,
+        columns=required_columns,
+        infer_schema_length=0,
+        ignore_errors=False,
+    )
+    missing_columns = [col for col in required_columns if col not in df.columns]
+    if missing_columns:
+        raise ValueError(f"NOAA LCD file is missing required columns: {missing_columns}")
+
+    out = (
+        df.filter(pl.col("REPORT_TYPE") == "FM-15")
+        .with_columns(
+            pl.col("DATE")
+            .str.to_datetime(strict=False)
+            .alias("raw_observation_timestamp")
+        )
+        .with_columns(
+            pl.col("raw_observation_timestamp").dt.truncate("1h").alias("timestamp"),
+            _rain_expr("HourlyPrecipitation", "mm").alias("rain_mm"),
+        )
+        .sort("raw_observation_timestamp")
+        .group_by("timestamp", maintain_order=True)
+        .agg(pl.col("rain_mm").last())
+        .with_columns(
+            pl.col("rain_mm").is_null().cast(pl.Int8).alias("rain_missing_flag"),
+            pl.lit(NOAA_LCD_SOURCE).alias("rain_source"),
+        )
+        .sort("timestamp")
+    )
+
+    if out["timestamp"].null_count() > 0:
+        raise ValueError("Some NOAA LCD timestamps could not be parsed.")
+
+    return out.select("timestamp", "rain_mm", "rain_missing_flag", "rain_source")
+
+
 def load_rainfall_file(
     path: str | Path,
     *,
@@ -136,6 +176,9 @@ def load_rainfall_file(
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"Rainfall file not found: {path}")
+
+    if path == NOAA_LCD_RAINFALL_PATH or path.name == NOAA_LCD_RAINFALL_PATH.name:
+        return _load_noaa_lcd_rainfall(path)
 
     df = pl.read_csv(path, infer_schema_length=1000, ignore_errors=False)
     df = _with_timestamp(df)

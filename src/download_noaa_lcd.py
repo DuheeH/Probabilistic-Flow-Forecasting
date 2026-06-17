@@ -7,9 +7,8 @@ the feature store and does not synthesize rainfall.
 from __future__ import annotations
 
 import argparse
+import subprocess
 from pathlib import Path
-
-import requests
 
 
 BASE_URL = "https://www.ncei.noaa.gov/oa/local-climatological-data/v2/access"
@@ -23,6 +22,17 @@ def yearly_url(year: int) -> str:
     return f"{BASE_URL}/{year}/LCD_{STATION_ID}_{year}.csv"
 
 
+def download_text(url: str) -> str:
+    result = subprocess.run(
+        ["curl", "-fsL", url],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    return result.stdout
+
+
 def download_lcd_years(start_year: int, end_year: int, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     wrote_header = False
@@ -30,9 +40,9 @@ def download_lcd_years(start_year: int, end_year: int, output_path: Path) -> Non
     with output_path.open("w", encoding="utf-8", newline="") as out:
         for year in range(start_year, end_year + 1):
             url = yearly_url(year)
-            response = requests.get(url, timeout=60)
-            response.raise_for_status()
-            lines = response.text.splitlines()
+            print(f"Downloading {year}: {url}")
+            text = download_text(url)
+            lines = text.splitlines()
             if not lines:
                 raise ValueError(f"No data returned for {year}: {url}")
 

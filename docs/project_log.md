@@ -393,11 +393,43 @@ This outline is intended to become a slide deck for an advisor. It should explai
   - ACIS confirms Central Park and daily precipitation, but not hourly precipitation.
 - Explicit fallback:
   - NOAA/NCEI LCD Central Park station `USW00094728`.
+  - This fallback is now approved for Version 1 Central Park hourly precipitation.
 - Current build status:
+  - The NOAA LCD fallback file has been downloaded locally.
   - The final feature store has not been built yet.
-  - It should remain blocked until one of these local raw rainfall files exists:
-    - `data/raw/weather/central_park_nrcc_climod2_hourly_rainfall_2015_2024.csv`
-    - `data/raw/weather/central_park_noaa_lcd_hourly_weather_2015_2024.csv`
+  - It should remain blocked until tide data is acquired and the final hourly backbone join is implemented/validated.
+
+### NOAA LCD Download And Rainfall Validation
+
+- Downloaded local fallback file:
+  - `data/raw/weather/central_park_noaa_lcd_hourly_weather_2015_2024.csv`
+- Source file details:
+  - Station identifier: `USW00094728`
+  - Station name: `NY CITY CENTRAL PARK, NY US`
+  - Raw row count: 116,737
+  - Raw timestamp range: `2015-01-01T00:00:00` through `2024-12-31T23:59:00`
+  - Raw reports include `FM-15`, `FM-16`, daily summary, and monthly summary records.
+- Loader interpretation:
+  - Use regular hourly `FM-15` observation rows only.
+  - Convert raw observation timestamps such as `2015-01-01T00:51:00` to the corresponding hour bucket, e.g. `2015-01-01 00:00:00`.
+  - Do not sum duplicate intra-hour reports because special `FM-16` rows can contain conflicting partial-period precipitation values.
+  - NOAA LCD `HourlyPrecipitation` is treated as millimeters because LCDv2 bulk CSV files are documented as SI / metric.
+  - Trace precipitation values (`T`) are treated as `0.0 mm` for Version 1 and documented as trace handling, not as missing rainfall.
+  - Blank or invalid precipitation values remain missing and set `rain_missing_flag = 1`.
+- Standardized loader output:
+  - Columns: `timestamp`, `rain_mm`, `rain_missing_flag`, `rain_source`
+  - Standardized row count: 87,541
+  - Standardized timestamp range: `2015-01-01 00:00:00` through `2024-12-31 23:00:00`
+  - Duplicate standardized timestamps: 0
+  - Missing standardized precipitation values: 1,114
+  - Expected local-hour count for 2015-01-01 00:00 through 2024-12-31 23:00: 87,672
+  - Missing expected hour buckets in NOAA LCD FM-15 observations: 131
+- Timestamp / timezone assumption:
+  - NOAA LCD timestamps are treated as local station observation timestamps for Central Park.
+  - Version 1 calendar features should use the local timestamp convention and document daylight-saving-time gaps or repeated hours.
+- Limitation:
+  - The rainfall input is usable for Version 1, but it is not a perfect complete hourly time axis.
+  - The final feature-store build must create its own complete hourly backbone and left-join rainfall onto it, preserving missing rainfall flags.
 
 ### Guardrails
 

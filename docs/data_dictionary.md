@@ -8,7 +8,7 @@ Version 1 is an external-forcing feature store only. It must not include target-
 
 | Column | Data Type | Units / Range | Tier | Build Status | Description | Critical Rules / Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| timestamp | datetime | hourly | 1 | V1 required | Master hourly timestamp backbone | Must be complete hourly index. Do not let rainfall or tide source define the time axis. Decide and document UTC vs America/New_York. |
+| timestamp | datetime | hourly | 1 | V1 required | Master hourly timestamp backbone | Must be complete hourly index. Do not let rainfall or tide source define the time axis. For NOAA LCD rainfall, use local Central Park observation time bucketed to the hour. |
 | hour_of_day | int8 | 0–23 | 1 | V1 required | Hour extracted from timestamp | Used for diurnal wastewater patterns. |
 | day_of_week | int8 | 0–6 | 1 | V1 required | Weekday index | Define mapping explicitly. Recommended: Monday = 0. |
 | month | int8 | 1–12 | 1 | V1 required | Calendar month | Captures seasonal effects. |
@@ -19,7 +19,7 @@ Version 1 is an external-forcing feature store only. It must not include target-
 | dow_cos | float32 | -1 to 1 | 1 | V1 required | Cyclical weekday encoding | Use with dow_sin. |
 | month_sin | float32 | -1 to 1 | 1 | V1 required | Cyclical annual encoding | Captures smooth seasonal periodicity. |
 | month_cos | float32 | -1 to 1 | 1 | V1 required | Cyclical annual encoding | Use with month_sin. |
-| rain_mm | float32 | mm/hr accumulation | 1 | V1 required | Hourly rainfall accumulation | Do not assume NaN = 0. Only set to 0 when no-rain observation is confirmed. |
+| rain_mm | float32 | mm/hr accumulation | 1 | V1 required | Hourly rainfall accumulation | NOAA LCD fallback uses `HourlyPrecipitation` from `FM-15` rows, treated as millimeters. Do not assume NaN = 0. Trace `T` is treated as 0.0 mm and documented. |
 | rain_t | float32 | mm/hr accumulation | 1 | V1 required | Current-hour rainfall feature | Usually equal to rain_mm. Included for schema readability. |
 | water_level | float32 | source-specific | 1 | V1 required | NOAA tide / water elevation | Must standardize units and datum. Consider renaming to water_level_ft or water_level_m after source choice. |
 | temperature_c | float32 | °C | 3 | V1 optional | Ambient air temperature | Useful for seasonality, snowmelt, and infiltration context. Do not block V1 if unavailable. |
@@ -47,14 +47,14 @@ Version 1 is an external-forcing feature store only. It must not include target-
 | water_level_rolling_mean_24h | float32 | same as water_level | 2 | V1 should-have | Prior 24-hour mean water level | Captures persistent tidal / water-level loading. |
 | tidal_phase_sin | float32 | -1 to 1 | 2 | V1 should-have | Synthetic semi-diurnal tidal phase | Use elapsed hours from fixed timestamp, not row index unless hourly backbone is validated complete. |
 | tidal_phase_cos | float32 | -1 to 1 | 2 | V1 should-have | Synthetic semi-diurnal tidal phase | Use with tidal_phase_sin. Period ≈ 12.42 hours. This does not replace observed water_level. |
-| rain_missing_flag | int8 | 0/1 | 1 | V1 required | Rainfall missingness indicator | 1 means missing or imputed. Do not silently fill missing rainfall. |
+| rain_missing_flag | int8 | 0/1 | 1 | V1 required | Rainfall missingness indicator | 1 means missing or invalid rainfall. Do not silently fill missing rainfall. Trace precipitation is not treated as missing in Version 1. |
 | tide_missing_flag | int8 | 0/1 | 1 | V1 required | Tide missingness indicator | 1 means missing or imputed. |
 | temperature_missing_flag | int8 | 0/1 | 3 | V1 optional | Temperature missingness indicator | Only needed if temperature_c is included. |
-| rain_source | string | source label | 1 | V1 required | Rainfall provenance | Example: Central Park / NRCC. |
+| rain_source | string | source label | 1 | V1 required | Rainfall provenance | Version 1 fallback label: `NOAA NCEI LCD Central Park USW00094728 fallback`. NRCC / Central Park remains the preferred conceptual source. |
 | tide_source | string | source label | 1 | V1 required | Tide provenance | Example: NOAA CO-OPS 8518750 The Battery. |
 | water_level_units | string | ft / m | 1 | V1 required | Water-level units | Required to prevent unit confusion. |
 | water_level_datum | string | MLLW / NAVD88 / etc. | 1 | V1 required | Vertical datum | Required to prevent mixing incompatible water-level references. |
-| timezone_assumption | string | UTC / America/New_York / etc. | 1 | V1 required metadata | Timestamp convention note | Could be stored as metadata rather than repeated per row. Must be documented in project_log.md. |
+| timezone_assumption | string | UTC / America/New_York / etc. | 1 | V1 required metadata | Timestamp convention note | Could be stored as metadata rather than repeated per row. NOAA LCD rainfall timestamps are treated as local Central Park station observation time bucketed to the hour. |
 | influent_flow_mgd | float32 | MGD | Future | V2 model table only | Actual North River influent flow target | Do not build tonight unless real hourly influent flow data exists. Target variable. |
 | flow_t_1 | float32 | MGD | Future | V2 model table only | Flow 1 hour ago | Requires real influent_flow_mgd. Autoregressive feature. |
 | flow_t_3 | float32 | MGD | Future | V2 model table only | Flow 3 hours ago | Requires real influent_flow_mgd. |
@@ -72,6 +72,7 @@ Version 1 is an external-forcing feature store only. It must not include target-
 | Storm features must be event-based. Dry periods should not accumulate storm duration or storm rainfall. |  |  |  |  |  |  |
 | Tidal harmonic features should be based on elapsed time, not row number, unless the hourly backbone is already verified complete. |  |  |  |  |  |  |
 | Keep Version 1 external forcing features separate from Version 2 model-target features. |  |  |  |  |  |  |
+| NOAA LCD fallback rainfall should use regular hourly `FM-15` rows only. Special `FM-16` rows should not be summed into hourly totals. |  |  |  |  |  |  |
 | The Version 1 deliverable is: |  |  |  |  |  |  |
 | north_river_feature_store_v1.parquet |  |  |  |  |  |  |
 | north_river_feature_store_v1.csv |  |  |  |  |  |  |
