@@ -1,10 +1,11 @@
 # Raw Data
 
-Store original source files here. Do not edit raw files in place.
+Raw data files live here locally and are intentionally not committed.
 
-Suggested subfolders:
+Examples:
 
-- `weather/`: rainfall, temperature, and other weather inputs.
-- `tides/`: NOAA tide and water-level source files.
-- `influent/`: future real North River influent-flow observations.
-- `dep_reports/`: DEP reports, operating efficiency workbooks, and methodology references.
+- NOAA LCD Central Park rainfall
+- NOAA CO-OPS Battery tide / water level
+- DEP reports and operating workbooks
+
+Keep raw files unchanged so the processing steps are reproducible.

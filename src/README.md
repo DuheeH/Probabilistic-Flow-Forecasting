@@ -1,5 +1,9 @@
 # Source Code
 
-Reusable Python code for the local feature-store build. Start simple: one clear build script is enough until the workflow naturally needs more structure.
+Scripts in this folder build Version 1 external-forcing features only.
 
-Do not add model-training code here until real hourly target data is available.
+- `download_noaa_lcd.py`: downloads the NOAA LCD Central Park fallback rainfall file.
+- `rainfall_loader.py`: loads and standardizes Central Park rainfall.
+- `build_feature_store_v1.py`: downloads/loads Battery tide data and builds the V1 feature store.
+
+No model training happens here yet. Do not add flow targets or flow-lag features until real hourly North River influent-flow data is available.
